@@ -1,6 +1,6 @@
 function love.conf(t)
 	t.version = "11.4"
 
-	t.window.title = "Line Stipple"
+	t.window.title = "9Slice"
 	t.window.resizable = true
 end
