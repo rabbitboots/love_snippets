@@ -1,44 +1,129 @@
-require("lib.strict") -- catch accidental globals
+-- Catch accidental global assignments
+require("lib.strict")
 
 --[[
 
-	Prints a string one character at a time, using LÖVE coloredtext tables and lg.printf().
+	This snippet demonstrates a method of incrementally printing a string, one character at a time,
+	using LÖVE coloredtext tables and love.graphics.printf(). The logic is implemented as part of a
+	simple text box abstraction.
 
-	It works by writing out the entire string in coloredtext format, assigning one color table
-	for every code point in the text. At the start, all code points have zero alpha. Printing
-	glyphs is then just a matter of progressively changing the color for each code point,
-	independent of actually drawing the coloredtext table in love.draw().
+	How it works: When you assign a message to the text box, it converts the string to a
+	coloredtext array, where every character gets its own color table. All color tables start with
+	an alpha value of zero. Printing glyphs is then just a matter of progressively changing the
+	color for each code point, independent of actually drawing the coloredtext table in love.draw().
 
-	Two timing methods are provided: the default counts elapsed time, while the other method maps
-	time to the width of characters.
+	Two timing methods are provided: the default counts elapsed time, while the 'distance' method
+	maps time to the width of characters.
 
-	Limitations: I guess there could be conflicts with shaders. It's also not as optimized as it
-	could be.
+	I'm not 100% happy with how this turned out, so it's presented in the form of a snippet and
+	not a library / drop-in solution.
+
+	Limitations:
+	* I guess there could be conflicts with shaders. It's also not as optimized as it could be.
+	* 'coloredtext' array creation happens at the initial call. The bigger the input string, the
+	  longer it will take to generate the array. This might be an issue for very big strings. (Or
+	  maybe not. I haven't tested anything bigger than a few paragraphs.) Either way, if you want
+	  pages and pages of scrollable text, you will likely require a different approach.
 
 --]]
 
+
+local MIT_LICENSE_TEXT = [[
+Copyright 2022 RBTS
+Some textual contents sourced from the public domain -- see source code for links.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+]]
+
+
 local utf8 = require("utf8")
 
--- Normally I wouldn't include this in a small snippet, but I need help printing instructions
--- and state without adding noise to the memory counter.
+-- Normally I wouldn't include auxiliary dependencies like QuickPrint in a small snippet, but I
+-- need help printing instructions and state without string concatenation adding noise to the
+-- memory counter.
 local quickPrint = require("lib.quick_print.quick_print")
 local qp = quickPrint.new()
 
 love.keyboard.setKeyRepeat(true)
 
+-- Demo state
 local demo_font_size = 16
 local demo_font = love.graphics.newFont(demo_font_size)
 local ui_font = love.graphics.newFont(13)
 
+local demo_speed_mult = 1.0
+
+-- Recycle color tables here.
+-- (I would probably do this in a real implementation, though as a snippet, it muddles things a bit.
+-- I've already written it though, so I'll leave it as-is.)
+local demo_color_stack = {}
+local demo_color_stack_max = 1024
+
+local function colorTableToStack(color_t)
+	if #demo_color_stack < demo_color_stack_max and type(color_t) == "table" then
+		table.insert(demo_color_stack, color_t)
+	end
+end
+
+
 love.graphics.setFont(demo_font)
 
--- Demo strings to use
+
+-- Demo strings to use.
 local demo_messages = {
-	"The quick brown fox jumps over the lazy dog.",
+	-- 1
+	"INSTRUCTIONS!"
+	.. "\n"
+	.. "\n\n* Hold SPACE to temporarily accelerate the speed of printing."
+	.. "\n\n* Press RETURN (ENTER) to complete the message immediately."
+	.. "\n\n* Hold UP/DOWN to scroll, or PAGEUP/PAGEDOWN to scroll faster."
+	.. "\n\n* Press TAB or SHIFT+TAB to cycle through messages."
+	.. "\n\n* Press F1 to switch between a timer-based delimiter and a distance-based one."
+	.. "\n\n* Press F3/F4 to adjust the timer threshold (lower is faster)."
+	.. "\n\n* Press F5/F6 to resize the font."
+	.. "\n\n* Press F7/F8 to adjust the distance threshold (higher is faster)."
+	.. "\n\t(This is reset to a value based on the width of the 'M' glyph when you adjust the font size.)"
+	.. "\n\n* Press F9, F10 or F11 to set the printing alignment to left, center or right, respectively."
+	.. "\n\n* Press F12 to toggle VSync."
+	.. "\n\n* Resize the window to change the text box size."
+	.. "\n\n",
+
+	-- 2
+	"The quick brown fox jumps over the lazy dog.\n\nJackdaws love my big sphinx of quartz.\n\nThe five boxing wizards jump quickly.\n\nAaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz\n\n0123456789\n\näëïöüÿ",
+
+	-- 3
+	[[
+Thin glyphs:
+|||||||||||||||||||||||||||||||||||||||||
+
+Wide glyphs:
+WWWWWWWWWWWWW
+]],
+
+	-- 4
+	-- https://www.lipsum.com/
+	"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+
+	-- 5
+	-- https://www.gutenberg.org/files/120/120-h/120-h.htm
+	[[
+THE appearance of the island when I came on deck next morning was altogether changed. Although the breeze had now utterly ceased, we had made a great deal of way during the night and were now lying becalmed about half a mile to the south-east of the low eastern coast. Grey-coloured woods covered a large part of the surface. This even tint was indeed broken up by streaks of yellow sand-break in the lower lands, and by many tall trees of the pine family, out-topping the others—some singly, some in clumps; but the general colouring was uniform and sad. The hills ran up clear above the vegetation in spires of naked rock. All were strangely shaped, and the Spy-glass, which was by three or four hundred feet the tallest on the island, was likewise the strangest in configuration, running up sheer from almost every side and then suddenly cut off at the top like a pedestal to put a statue on.
+
+The Hispaniola was rolling scuppers under in the ocean swell. The booms were tearing at the blocks, the rudder was banging to and fro, and the whole ship creaking, groaning, and jumping like a manufactory. I had to cling tight to the backstay, and the world turned giddily before my eyes, for though I was a good enough sailor when there was way on, this standing still and being rolled about like a bottle was a thing I never learned to stand without a qualm or so, above all in the morning, on an empty stomach.
+
+Perhaps it was this—perhaps it was the look of the island, with its grey, melancholy woods, and wild stone spires, and the surf that we could both see and hear foaming and thundering on the steep beach—at least, although the sun shone bright and hot, and the shore birds were fishing and crying all around us, and you would have thought anyone would have been glad to get to land after being so long at sea, my heart sank, as the saying is, into my boots; and from the first look onward, I hated the very thought of Treasure Island.]],
+
+	-- 6
+	-- https://opensource.org/licenses/MIT
+	MIT_LICENSE_TEXT,
 }
 local demo_message_i = 1
 
--- Size of the text box relative to the application window.
+-- Size of the text box relative to the application window. 1.0 == use the whole window.
 local demo_text_box_scale = 0.8
 
 -- Initialized in love.load
@@ -47,7 +132,7 @@ local demo_text_box
 
 -- * Helpers *
 
-
+--- This just copies the first four numeric fields (red, green, blue, alpha) from one table to another.
 local function copyColor(col_from, col_to)
 	col_to[1], col_to[2], col_to[3], col_to[4] = col_from[1], col_from[2], col_from[3], col_from[4]
 end
@@ -57,24 +142,25 @@ end
 --  as named fields.
 -- @param str The string to convert.
 -- @param color_t The default colors to assign.
--- @return A coloredtext version of 'str'.
-local function stringToColoredText(str, color_t, font)
-
-	local colored_text = {}
+-- @param colored_text An existing array to write to or overwrite.
+-- @param font The font used by the text box.
+-- @return Nothing. 'colored_text' is modified in-place.
+local function stringToColoredText(str, color_t, colored_text, font)
 
 	local last_glyph = utf8.offset(str, -1)
 
-	local i = 1
+	local i = 1 -- Byte offset in UTF-8 string
+	local j = 1 -- Index in coloredtext table
+
 	while i <= #str do
 		local i2 = utf8.offset(str, 2, i)
 
-		local char_header = {}
+		local char_header = table.remove(demo_color_stack) or {}
 		copyColor(color_t, char_header)
 
 		local string_left = string.sub(str, 1, i - 1)
 		local sub_str = string.sub(str, i, i2 - 1)
 
-		char_header.x = font:getWidth(string.sub(str, 1, i - 1))
 		char_header.w = font:getWidth(sub_str)
 
 		-- If applicable, subtract kerning offset from width (this is used for the distance update mode).
@@ -85,12 +171,18 @@ local function stringToColoredText(str, color_t, font)
 			end
 		end
 
-		table.insert(colored_text, char_header)
-		table.insert(colored_text, sub_str)
+		colored_text[j] = char_header
+		colored_text[j + 1] = sub_str
+
+		j = j + 2
 		i = i2
 	end
 
-	return colored_text
+	-- Trim unused entries, and return unused color tables to the stack
+	for k = #colored_text, j + 1, -1 do
+		colorTableToStack(colored_text[k])
+		colored_text[k] = nil
+	end
 end
 
 
@@ -115,6 +207,7 @@ local function newTextBox(font)
 	text_box.colored_text = {}
 	text_box.font = font or love.graphics.getFont()
 
+	-- The RGBA values to apply to visible and yet-to-be-displayed glyphs.
 	text_box.color_on = {1, 1, 1, 1}
 	text_box.color_off = {1, 1, 1, 0}
 
@@ -125,23 +218,33 @@ local function newTextBox(font)
 
 	text_box.advance_mode = "time" -- "time", "distance"
 
-	-- Count progress in terms of unicode code points. We can track line and array indexes
-	-- within the span of a single tick, but we cannot rely on that across ticks because the
-	-- text box may have been re-wrapped.
+	-- Count progress in terms of Unicode code points.
 	text_box.visible_u_chars = 0
 
 	-- time mode
 	text_box.timer = 0
-	text_box.timer_max = 1/12
+	text_box.timer_max = 6/256 -- lower is faster
 
 	-- distance mode
-	text_box.distance_pixels_per_second = 128
+	text_box.distance_pixels_per_second = 128 -- higher is faster
 	text_box.distance_x = 0
 	text_box.distance_x_next = 0
 
+	-- "left", "center", "right", and technically "justify", though that might give unexpected results with
+	-- only a few words on a line.
 	text_box.align = "left"
 
+	text_box.n_lines = 1 -- Used to determine Y scroll bound.
+	text_box.scroll_y = 0
+	text_box.scroll_y_min = 0
+	text_box.scroll_y_max = 0
+
 	return text_box
+end
+
+
+local function textBoxEnforceScrollYBounds(text_box)
+	text_box.scroll_y = math.max(text_box.scroll_y_min, math.min(text_box.scroll_y, text_box.scroll_y_max))
 end
 
 
@@ -152,7 +255,7 @@ local function textBoxRefresh(text_box)
 
 	-- Convert source string to a coloredtext sequence, where each code-point gets its own color table
 	-- (plus some additional metadata.)
-	text_box.colored_text = stringToColoredText(text_box.source_text, text_box.color_off, font)
+	stringToColoredText(text_box.source_text, text_box.color_off, text_box.colored_text, font)
 
 	-- Catch up to the latest visible code point.
 	local visible_u_chars = text_box.visible_u_chars
@@ -160,7 +263,7 @@ local function textBoxRefresh(text_box)
 		visible_u_chars = math.huge
 	end
 
-	local index = 1, 1
+	local index = 1
 
 	while visible_u_chars > 0 and index <= #text_box.colored_text do
 
@@ -173,10 +276,21 @@ local function textBoxRefresh(text_box)
 		index = index + 2
 		visible_u_chars = visible_u_chars - 1
 	end
+
+	-- Need getWrap() to determine the number of lines in the text.
+	local width, wrapped_lines = font:getWrap(text_box.source_text, text_box.w)
+	text_box.n_lines = #wrapped_lines
+
+	local line_h = math.ceil(font:getHeight() * font:getLineHeight())
+
+	-- Allow scrolling one line above and below the text.
+	text_box.scroll_y_min = -line_h
+	text_box.scroll_y_max = line_h + math.ceil(text_box.n_lines * line_h - text_box.h)
+	textBoxEnforceScrollYBounds(text_box)
 end
 
 
---- Set up a text box to print a new message.
+--- Set up a text box to print a new message. Reset Y scroll position.
 local function textBoxInitMessage(text_box, str)
 
 	text_box.running = true
@@ -190,9 +304,23 @@ local function textBoxInitMessage(text_box, str)
 	text_box.source_text = str
 
 	textBoxRefresh(text_box)
+
+	text_box.scroll_y = text_box.scroll_y_min
 end
 
 
+--- Immediately finalize a message.
+local function textBoxCompleteMessage(text_box)
+	if not text_box.complete then
+		text_box.visible_u_chars = math.huge
+		text_box.complete = true
+
+		textBoxRefresh(text_box)
+	end
+end
+
+
+--- The text box per-frame tick callback.
 local function textBoxTick(text_box, dt)
 
 	if text_box.running then
@@ -200,7 +328,7 @@ local function textBoxTick(text_box, dt)
 
 			text_box.timer = text_box.timer + dt
 
-			local safety = 64
+			local safety = 1024
 			while text_box.timer >= text_box.timer_max do
 
 				text_box.timer = text_box.timer - text_box.timer_max
@@ -231,7 +359,7 @@ local function textBoxTick(text_box, dt)
 
 			text_box.distance_x = text_box.distance_x + dt * text_box.distance_pixels_per_second
 
-			local safety = 64
+			local safety = 1024
 			while safety > 0 do
 
 				if text_box.distance_x >= text_box.distance_x_next then
@@ -265,10 +393,12 @@ end
 -- * / Text box logic *
 
 
+-- * Demo interface logic *
+
+
 local function resizeCenterTextBox(text_box, win_scale)
 
 	local old_w, old_h = text_box.w, text_box.h
-
 	local win_w, win_h = love.graphics.getDimensions()
 
 	text_box.w = math.max(0, math.floor(0.5 + win_w*win_scale))
@@ -276,18 +406,10 @@ local function resizeCenterTextBox(text_box, win_scale)
 	text_box.x = math.floor(0.5 + win_w/2 - text_box.w/2)
 	text_box.y = math.floor(0.5 + win_h/2 - text_box.h/2)
 
-	-- Reconstruct message state if the dimensions have changed.
+	-- Reconstruct text box state if the dimensions have changed.
 	if text_box.w ~= old_w or text_box.h ~= old_h then
 		textBoxRefresh(text_box)
 	end
-end
-
-
--- * Demo interface logic *
-
-
-local function demoReplaceFontReferences()
-	demo_text_box.font = demo_font
 end
 
 
@@ -296,7 +418,7 @@ local function demoReloadFont(size)
 	local old_font = demo_font
 	demo_font = love.graphics.newFont(size)
 
-	demoReplaceFontReferences()
+	demo_text_box.font = demo_font
 
 	if old_font then
 		old_font:release()
@@ -309,7 +431,7 @@ end
 
 local function setSensiblePixelsPerSecond(text_box, font)
 	local M_width = font:getWidth("M")
-	text_box.distance_pixels_per_second = M_width * 9
+	text_box.distance_pixels_per_second = M_width * 24
 end
 
 
@@ -323,8 +445,8 @@ function love.load(arguments)
 
 	resizeCenterTextBox(demo_text_box, demo_text_box_scale)
 	setSensiblePixelsPerSecond(demo_text_box, demo_font)
-	
-	textBoxInitMessage(demo_text_box, "The quick brown fox jumpeth over the lazy doggeth.")
+
+	textBoxInitMessage(demo_text_box, demo_messages[demo_message_i])
 end
 
 
@@ -336,6 +458,9 @@ end
 function love.keypressed(kc, sc)
 	if sc == "escape" then
 		love.event.quit()
+
+	elseif sc == "return" or sc == "kpenter" then
+		textBoxCompleteMessage(demo_text_box)
 
 	elseif sc == "tab" then
 		if love.keyboard.isScancodeDown("lshift", "rshift") then
@@ -356,6 +481,12 @@ function love.keypressed(kc, sc)
 	elseif sc == "f1" then
 		demo_text_box.advance_mode = (demo_text_box.advance_mode == "time") and "distance" or "time"
 
+	elseif sc == "f3" then
+		demo_text_box.timer_max = math.max(0, demo_text_box.timer_max - 1/256)
+
+	elseif sc == "f4" then
+		demo_text_box.timer_max = math.min(1, demo_text_box.timer_max + 1/256)
+
 	elseif sc == "f5" then
 		demo_font_size = math.max(1, demo_font_size - 1)
 		demoReloadFont(demo_font_size)
@@ -367,6 +498,12 @@ function love.keypressed(kc, sc)
 		demoReloadFont(demo_font_size)
 		setSensiblePixelsPerSecond(demo_text_box, demo_font)
 		textBoxRefresh(demo_text_box)
+
+	elseif sc == "f7" then
+		demo_text_box.distance_pixels_per_second = math.min(4096, demo_text_box.distance_pixels_per_second - 10)
+
+	elseif sc == "f8" then
+		demo_text_box.distance_pixels_per_second = math.max(0, demo_text_box.distance_pixels_per_second + 10)
 
 	elseif sc == "f9" then
 		demo_text_box.align = "left"
@@ -384,7 +521,33 @@ end
 
 
 function love.update(dt)
-	textBoxTick(demo_text_box, dt)
+
+	local scanDown = love.keyboard.isScancodeDown
+
+	if scanDown("up") then
+		demo_text_box.scroll_y = demo_text_box.scroll_y - 350*dt
+		textBoxEnforceScrollYBounds(demo_text_box)
+
+	elseif scanDown("pageup") then
+		demo_text_box.scroll_y = demo_text_box.scroll_y - 700*dt
+		textBoxEnforceScrollYBounds(demo_text_box)		
+
+	elseif scanDown("down") then
+		demo_text_box.scroll_y = demo_text_box.scroll_y + 350*dt
+		textBoxEnforceScrollYBounds(demo_text_box)
+
+	elseif scanDown("pagedown") then
+		demo_text_box.scroll_y = demo_text_box.scroll_y + 700*dt
+		textBoxEnforceScrollYBounds(demo_text_box)
+	end
+
+	if scanDown("space") then
+		demo_speed_mult = 4.0
+	else
+		demo_speed_mult = 1.0
+	end
+
+	textBoxTick(demo_text_box, dt * demo_speed_mult)
 end
 
 
@@ -403,17 +566,16 @@ function love.draw()
 
 	love.graphics.translate(demo_text_box.x, demo_text_box.y)
 
+	love.graphics.setColor(0.2, 0.2, 0.2, 1.0)
+	love.graphics.setLineWidth(border*2)
+	love.graphics.rectangle("line", -border, -border, demo_text_box.w + border*2, demo_text_box.h + border*2)
 	love.graphics.setColor(0.25, 0.25, 0.25, 1.0)
 	love.graphics.rectangle("fill", 0, 0, demo_text_box.w, demo_text_box.h)
-
-	love.graphics.setLineWidth(border)
-	love.graphics.setColor(0.5, 0.5, 0.5, 1.0)
-	love.graphics.rectangle("line", -border, -border, demo_text_box.w + border*2, demo_text_box.h + border*2)
 
 	love.graphics.setScissor(demo_text_box.x, demo_text_box.y, demo_text_box.w, demo_text_box.h)
 
 	love.graphics.setColor(1, 1, 1, 1)
-	love.graphics.printf(demo_text_box.colored_text, 0, 0, demo_text_box.w, demo_text_box.align)
+	love.graphics.printf(demo_text_box.colored_text, 0, math.floor(-demo_text_box.scroll_y), demo_text_box.w, demo_text_box.align)
 
 	love.graphics.pop()
 
@@ -433,27 +595,21 @@ function love.draw()
 	love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.setFont(ui_font)
 
-	qp:write1("Esc: Quit")
+	qp:write4("Message # ", demo_message_i, "/", #demo_messages)
 	qp:advanceXCoarse(a_course, a_marg)
 
-	qp:write2("(Shift+)Tab: Cycle message: ", demo_message_i)
-	qp:advanceXCoarse(a_course, a_marg)
-
-	qp:write1("Up/Down: Scroll")
-	qp:advanceXCoarse(a_course, a_marg)
-
-	qp:write2("F9/F10/F11: align: ", demo_text_box.align)
+	qp:write2("align: ", demo_text_box.align)
 	qp:advanceXCoarse(a_course, a_marg)
 
 	qp:down()
 
-	qp:write2("F12: Vsync: ", love.window.getVSync())
+	qp:write2("Vsync: ", love.window.getVSync())
 	qp:advanceXCoarse(a_course, a_marg)
 
-	qp:write2("F5/F6: Font sz: ", demo_font_size)
+	qp:write2("Font sz: ", demo_font_size)
 	qp:advanceXCoarse(a_course, a_marg)
 
-	qp:write2("F1: Advance mode: ", demo_text_box.advance_mode)
+	qp:write2("Advance mode: ", demo_text_box.advance_mode)
 	qp:advanceXCoarse(a_course, a_marg)
 
 	qp:write2("FPS: ", love.timer.getFPS())
@@ -474,10 +630,10 @@ function love.draw()
 	qp:write2("timer: ", math.floor(demo_text_box.timer*100)/100)
 	qp:advanceXCoarse(a_course, a_marg)
 
-	qp:write2("F3/F4: timer_max: ", demo_text_box.timer_max)
+	qp:write2("timer_max: ", demo_text_box.timer_max)
 	qp:advanceXCoarse(a_course, a_marg)
 
-	qp:write2("F7/F8: dist p/s: ", demo_text_box.distance_pixels_per_second)
+	qp:write2("dist p/s: ", demo_text_box.distance_pixels_per_second)
 	qp:advanceXCoarse(a_course, a_marg)
 
 	qp:write2("Mem (KB): ", math.floor(collectgarbage("count")*10)/10)
@@ -488,7 +644,7 @@ function love.draw()
 	qp:write2("dist x: ", math.floor(demo_text_box.distance_x*100)/100)
 	qp:advanceXCoarse(a_course, a_marg)
 
-	qp:write2("dist x next: ", math.floor(demo_text_box.distance_x*100)/100)
+	qp:write2("dist x next: ", math.floor(demo_text_box.distance_x_next*100)/100)
 	qp:advanceXCoarse(a_course, a_marg)
 
 	love.graphics.pop()
