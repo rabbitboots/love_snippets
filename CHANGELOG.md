@@ -1,5 +1,10 @@
 # Changelog (love\_snippets)
 
+## 1.0.4 -- 2022-06-29
+* coloredtext\_to\_string:
+  * Include the optional alpha channel when printing color tables.
+  * Add conf.lua.
+
 ## 1.0.3 -- 2022-06-29
 * Added some basic coloredtext-to-string functions.
 

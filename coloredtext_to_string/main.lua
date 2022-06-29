@@ -27,7 +27,15 @@ local function coloredTextToString(coloredtext, include_color_tables)
 
         elseif type(entry) == "table" then
             if include_color_tables then
-                table.insert(temp_t, string.format("(r=%d g=%d b=%d)", entry[1] * 255, entry[2] * 255, entry[3] * 255))
+            	local temp_str
+
+            	-- (Alpha is optional)
+            	if entry[4] then
+            		temp_str = string.format("(r=%d g=%d b=%d a=%d)", entry[1]*255, entry[2]*255, entry[3]*255, entry[4]*255)
+            	else
+            		temp_str = string.format("(r=%d g=%d b=%d)", entry[1]*255, entry[2]*255, entry[3]*255)
+            	end
+                table.insert(temp_t, temp_str)
             end
 
         else
@@ -47,7 +55,15 @@ local function coloredTextToTerminal(coloredtext, line_feed, include_color_table
 
 		elseif type(entry) == "table" then
 			if include_color_tables then
-				io.write(string.format("(r=%d g=%d b=%d)", entry[1] * 255, entry[2] * 255, entry[3] * 255))
+				local temp_str
+
+				-- (Alpha is optional)
+	           	if entry[4] then
+	           		temp_str = string.format("(r=%d g=%d b=%d a=%d)", entry[1]*255, entry[2]*255, entry[3]*255, entry[4]*255)
+	           	else
+	           		temp_str = string.format("(r=%d g=%d b=%d)", entry[1]*255, entry[2]*255, entry[3]*255)
+	           	end
+				io.write(temp_str)
 			end
 
 		else
@@ -85,8 +101,10 @@ local coloredtext = {
 	RED, "dog."
 }
 
+
 local plain_text = coloredTextToString(coloredtext)
 
+-- Print some stuff to the terminal/console.
 print("")
 print("coloredTextToTerminal():")
 coloredTextToTerminal(coloredtext, true)
