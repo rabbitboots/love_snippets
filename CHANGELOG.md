@@ -1,5 +1,8 @@
 # Changelog (love\_snippets)
 
+## 1.0.3 -- 2022-06-29
+* Added some basic coloredtext-to-string functions.
+
 ## 1.0.2 -- 2022-06-15
 * Added incremental text snippet.
 
