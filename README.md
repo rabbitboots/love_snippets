@@ -1,7 +1,7 @@
 # love\_snippets
 LÖVE-oriented snippets that don't warrant their own repositories.
 
-**VERSION:** 1.0.4
+**VERSION:** 1.0.5
 
 
 ## 9slice
@@ -14,6 +14,10 @@ Some basic functions for converting `coloredtext` sequences to plain strings, an
 
 ## line\_stipple
 A function that draws stippled lines.
+
+
+## system\_cursor\_test
+Gets copies of the system mouse cursors, and sets them as the mouse hovers over widgets (colored rectangles).
 
 
 ## text\_incremental

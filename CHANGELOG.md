@@ -1,5 +1,8 @@
 # Changelog (love\_snippets)
 
+## 1.0.5 -- 2022-07-04
+* Added system cursor test.
+
 ## 1.0.4 -- 2022-06-29
 * coloredtext\_to\_string:
   * Include the optional alpha channel when printing color tables.
