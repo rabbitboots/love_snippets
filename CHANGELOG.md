@@ -1,5 +1,8 @@
 # Changelog (love\_snippets)
 
+## 1.0.6 -- 2022-07-30
+* Added 'mod\_key\_state' example.
+
 ## 1.0.5 -- 2022-07-04
 * Added system cursor test.
 * Deleted 'ticker_text', a WIP that I uploaded by mistake on the 29th. You can find it in [this commit](https://github.com/rabbitboots/love_snippets/commit/4dfa122da4a684a93b5853637e00e4c016d04a31), if you're curious, though it doesn't really do anything besides apply a sine function to some sample text.

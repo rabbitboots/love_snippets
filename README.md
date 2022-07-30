@@ -1,7 +1,7 @@
 # love\_snippets
 LÖVE-oriented snippets that don't warrant their own repositories.
 
-**VERSION:** 1.0.5
+**VERSION:** 1.0.6
 
 
 ## 9slice
@@ -14,6 +14,10 @@ Some basic functions for converting `coloredtext` sequences to plain strings, an
 
 ## line\_stipple
 A function that draws stippled lines.
+
+
+## mod\_key\_state
+An alternative to using `love.keyboard.isDown()` within `love.keypressed()` to check the state of modifier keys (ctrl, alt, etc.).
 
 
 ## system\_cursor\_test
