@@ -1,4 +1,7 @@
 --[[
+	NOTE: This snippet is obsolete. See 'quadSlice' for a 9slice drawing library:
+	https://github.com/rabbitboots/quad_slice
+
 	A basic 9-Slice example using quads (all referencing one image).
 	
 	REGARDING SEMI-TRANSPARENCY:
