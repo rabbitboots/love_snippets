@@ -1,5 +1,8 @@
 # Changelog (love\_snippets)
 
+## 1.0.7 -- 2022-08-11
+* Obsoleted the 9slice example, as I now have a [library](https://github.com/rabbitboots/quad_slice) for drawing 9slice rectangles.
+
 ## 1.0.6 -- 2022-07-30
 * Added 'mod\_key\_state' example.
 
