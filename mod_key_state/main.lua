@@ -7,9 +7,9 @@ require("lib.strict")
 	within love.keypressed():
 
 	function love.keypressed(key, scancode, isrepeat)
-		local ctrl_held = love.keyboard.isScancodeDown("lctrl", "rctrl")
+		local ctrl_held = love.keyboard.isDown("lctrl", "rctrl")
 
-		if ctrl_held and scancode == "q" then
+		if ctrl_held and key == "q" then
 			love.event.quit()
 		end
 	end
@@ -46,13 +46,13 @@ local qp = quickPrint.new()
 
 
 local function printKeyState()
-	local scDown = love.keyboard.isScancodeDown
+	local kcDown = love.keyboard.isDown
 	local m_state = modKey.state
 
-	print(frame_n, 'isScancodeDown "lctrl" / "rctrl": ', scDown("lctrl"), scDown("rctrl"))
-	print(frame_n, 'isScancodeDown "lshift" / "rshift": ', scDown("lshift"), scDown("rshift"))
-	print(frame_n, 'isScancodeDown "lalt" / "ralt": ', scDown("lalt"), scDown("ralt"))
-	print(frame_n, 'isScancodeDown "lgui" / "rgui": ', scDown("lgui"), scDown("rgui"))
+	print(frame_n, 'isDown "lctrl" / "rctrl": ', kcDown("lctrl"), kcDown("rctrl"))
+	print(frame_n, 'isDown "lshift" / "rshift": ', kcDown("lshift"), kcDown("rshift"))
+	print(frame_n, 'isDown "lalt" / "ralt": ', kcDown("lalt"), kcDown("ralt"))
+	print(frame_n, 'isDown "lgui" / "rgui": ', kcDown("lgui"), kcDown("rgui"))
 	print("...")
 	print(frame_n, 'modKey.state "lctrl" / "rctrl": ', m_state["lctrl"], m_state["rctrl"])
 	print(frame_n, 'modKey.state "lshift" / "rshift": ', m_state["lshift"], m_state["rshift"])
@@ -62,24 +62,24 @@ end
 
 
 function love.keypressed(kc, sc, isrepeat)
-	modKey.pressed(sc)
+	modKey.pressed(kc)
 
 	print("---------------------------------------------------------------")
 	print(frame_n, 'love.keypressed kc / sc / isrepeat: ', kc, sc, isrepeat)
 	print("...")
 	printKeyState()
 
-	if sc == "escape" then
+	if kc == "escape" then
 		love.event.quit()
 
-	elseif sc == "0" then
+	elseif kc == "0" then
 		slowdown_flag = not slowdown_flag
 	end
 end
 
 
 function love.keyreleased(kc, sc)
-	modKey.released(sc)
+	modKey.released(kc)
 
 	print("---------------------------------------------------------------")
 	print(frame_n, 'love.keyreleased kc / sc: ', kc, sc)
@@ -111,7 +111,7 @@ function love.draw()
 
 	qp:setOrigin(16, 16)
 	qp:reset()
-	qp:print("Detected scancode state")
+	qp:print("Detected modkey state")
 	qp:down()
 	qp:print("lctrl: ", modKey.state.lctrl)
 	qp:print("rctrl: ", modKey.state.rctrl)

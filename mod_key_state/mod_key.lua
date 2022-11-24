@@ -1,10 +1,12 @@
 --[[
-	A simple modkey state handler. This is an alternative to using isDown() for
-	modkeys in love.keypressed(). Merged modkey state is also provided (so for
-	example, you can check 'modKey.ctrl' instead of checking both the left and
-	right ctrl keys).
+	A simple modkey (ctrl, shift, alt, gui) state handler. This is an alternative
+	to using isDown() for modkeys in love.keypressed(). Merged modkey state is
+	also provided (so for example, you can check 'modKey.ctrl' instead of checking
+	both the left and right ctrl keys).
 
 	Note that some key combos may be reserved and intercepted by the user's OS.
+
+	Feed this with KeyConstants or Scancodes, but not both.
 --]]
 
 
@@ -66,18 +68,18 @@ end
 
 
 --- Call in love.keypressed()
-function modKey.pressed(sc)
-	if modKey.state[sc] ~= nil then
-		modKey.state[sc] = true
+function modKey.pressed(key)
+	if modKey.state[key] ~= nil then
+		modKey.state[key] = true
 		updateMod()
 	end
 end
 
 
 --- Call in love.keyreleased()
-function modKey.released(sc)
-	if modKey.state[sc] ~= nil then
-		modKey.state[sc] = false
+function modKey.released(key)
+	if modKey.state[key] ~= nil then
+		modKey.state[key] = false
 		updateMod()
 	end
 end
