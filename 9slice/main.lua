@@ -1,14 +1,10 @@
+-- Tested with LÖVE 11.4, 11.5 and 12.0-development (17362b6).
+
 --[[
 	NOTE: This snippet is obsolete. See 'quadSlice' for a 9slice drawing library:
 	https://github.com/rabbitboots/quad_slice
 
 	A basic 9-Slice example using quads (all referencing one image).
-	
-	REGARDING SEMI-TRANSPARENCY:
-	I'm not sure if this is 100% reliable when drawing with semi-transparent alpha. There could be thin
-	slivers of overdraw due to floating point rounding. Maybe flooring the coordinates and dimensions
-	would work? One possible (though kind of heavy) solution would be to draw the 9-Slice to a canvas at
-	full alpha, then draw the canvas at the desired alpha level.
 --]]
 
 love.keyboard.setKeyRepeat(true)

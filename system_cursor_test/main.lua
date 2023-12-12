@@ -1,6 +1,6 @@
---[[
+-- Tested with LÖVE 11.4, 11.5 and 12.0-development (17362b6).
 
-LÖVE Version: 11.4
+--[[
 
 This snippet gets all of the system cursors reported by LÖVE/SDL2 and sets them according to a basic hierarchy:
 
@@ -11,7 +11,8 @@ This snippet gets all of the system cursors reported by LÖVE/SDL2 and sets them
 --]]
 
 
-if not love.mouse.isCursorSupported() then -- touchscreen-oriented platforms
+-- Not all touchscreen-oriented platforms support cursors.
+if not love.mouse.isCursorSupported() then
 	error("this system does not support custom cursors.")
 end
 
@@ -298,4 +299,3 @@ function love.draw()
 		8, win_h - status_bar_h + 8
 	)
 end
-

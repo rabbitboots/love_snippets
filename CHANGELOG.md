@@ -1,5 +1,8 @@
 # Changelog (love\_snippets)
 
+## 1.0.9 -- 2023-12-11
+* Removed LÖVE version fields in `conf.lua` files, and quickly tested each snippet with LÖVE versions 11.4, 11.5 and 12.0-development (17362b6). All snippets work except for text\_incremental, which has some sort of (non-fatal) issue with ligatures in coloredtext in 12.0-development.
+
 ## 1.0.8 -- 2022-11-23
 * mod\_key\_state:
   * Changed the example to use KeyConstants rather than Scancodes. This should be more friendly to users who have remapped keys at the OS level. One can still use Scancodes instead, if that causes other issues.

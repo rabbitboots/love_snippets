@@ -1,7 +1,7 @@
 # love\_snippets
 LÖVE-oriented snippets that don't warrant their own repositories.
 
-**VERSION:** 1.0.8
+**VERSION:** 1.0.9
 
 
 ## 9slice

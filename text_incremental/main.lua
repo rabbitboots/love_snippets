@@ -1,3 +1,11 @@
+-- Tested with LÖVE 11.4 and 11.5.
+
+-- NOTE: There are some issues with this snippet in 12.0-development, as of commit a51ea94. If you watch demo text #2,
+-- the sentence 'The five boxing wizards jump quickly' suddenly completes upon reaching the word 'five'. I think this
+-- is because the 'f' and 'i' are shaped into a single 'ﬁ' glyph, and it seems that the coloredtext mapping code in
+-- 12.0 is a work in progress. See this comment:
+-- https://github.com/love2d/love/blob/a51ea9430b1428ac01accda28c13e3e02366e195/src/modules/font/freetype/HarfbuzzShaper.cpp#L247
+
 -- Catch accidental global assignments
 require("lib.strict")
 

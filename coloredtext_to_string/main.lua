@@ -1,3 +1,5 @@
+-- Tested with LÖVE 11.4, 11.5 and 12.0-development (17362b6).
+
 --[[
 
 Some functions for converting LÖVE coloredtext sequences to strings and printing them to the
